@@ -159,7 +159,7 @@ func getComponentData() (*Component, error) {
 	}
 	leadTimeDays, err := strconv.ParseInt(lTD, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("invalid lead time days '%s': must be a number", uc)
+		return nil, fmt.Errorf("invalid lead time days '%s': must be a number", lTD)
 	}
 
 	return NewComponent(id, name, description, unitOfMeasure, unitCost, int(leadTimeDays))
