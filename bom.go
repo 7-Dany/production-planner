@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+const (
+	minQuantity = 0.0
+)
+
 type BOMItem struct {
 	Component *Component
 	Quantity  float64
@@ -38,10 +42,10 @@ func NewBOM(productID, productName string) (*BOM, error) {
 func (bom *BOM) AddItem(componentID string, quantity float64, Registry *ComponentRegistry) error {
 	c, ok := Registry.GetComponent(componentID)
 	if !ok {
-		return fmt.Errorf("add item failed, no component with that id")
+		return fmt.Errorf("component with id %q not found", componentID)
 	}
-	if quantity <= 0 {
-		return fmt.Errorf("add item failed, quantity must be greater than 0")
+	if quantity <= minQuantity {
+		return fmt.Errorf("quantity must be greater than %.2f", minQuantity)
 	}
 	bom.Items = append(bom.Items, NewBOMItem(c, quantity))
 	return nil
@@ -57,14 +61,37 @@ func (bom *BOM) TotalCost() float64 {
 
 func (bom *BOM) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Product ID: %v\n", bom.ProductID)
-	fmt.Fprintf(&b, "Product Name: %v\n", bom.ProductName)
-	for _, item := range bom.Items {
-		if item.Quantity > 0 {
-			fmt.Fprint(&b, item.Component.String())
+
+	// Header
+	fmt.Fprintf(&b, "╔═══════════════════════════════════════════════════════╗\n")
+	fmt.Fprintf(&b, "║ Product: %-44s ║\n", bom.ProductName)
+	fmt.Fprintf(&b, "║ ID: %-49s ║\n", bom.ProductID)
+	fmt.Fprintf(&b, "╠═══════════════════════════════════════════════════════╣\n")
+
+	// Items
+	if len(bom.Items) == 0 {
+		fmt.Fprintf(&b, "║ No components added yet                               ║\n")
+	} else {
+		fmt.Fprintf(&b, "║ Components:                                           ║\n")
+		for i, item := range bom.Items {
+			lineTotal := item.Quantity * item.Component.UnitCost
+			fmt.Fprintf(&b, "║ %2d. %-14s %6.2f %-4s × $%7.2f = $%8.2f ║\n",
+				i+1,
+				item.Component.Name,
+				item.Quantity,
+				item.Component.UnitOfMeasure,
+				item.Component.UnitCost,
+				lineTotal,
+			)
 		}
 	}
-	fmt.Fprintf(&b, "Cost: %v\n", bom.TotalCost())
+
+	// Total
+	total := fmt.Sprintf("Total: $%8.2f", bom.TotalCost())
+	fmt.Fprintf(&b, "╠═══════════════════════════════════════════════════════╣\n")
+	fmt.Fprintf(&b, "║ %-53s ║\n", total)
+	fmt.Fprintf(&b, "╚═══════════════════════════════════════════════════════╝\n")
+
 	return b.String()
 }
 
@@ -84,14 +111,13 @@ func (br *BOMRegistry) ListAll() {
 	fmt.Println("===All BOM===")
 	for _, v := range br.BOMS {
 		fmt.Print(v.String())
-		fmt.Println("=============")
 	}
 }
 
 func (br *BOMRegistry) CreateBOM(b *BOM) error {
 	_, ok := br.BOMS[b.ProductID]
 	if ok {
-		return fmt.Errorf("Product id already exists")
+		return fmt.Errorf("product id %q already exists", b.ProductID)
 	}
 	br.BOMS[b.ProductID] = b
 	return nil
@@ -112,21 +138,17 @@ func (br *BOMRegistry) DeleteBOM(id string) {
 func addBomItem(b *BOM, cr *ComponentRegistry) error {
 	id, err := getInput("id")
 	if err != nil {
-		return fmt.Errorf("error getting id: %v", err)
+		return fmt.Errorf("getting id: %v", err)
 	}
 	q, err := getInput("quantity")
 	if err != nil {
-		return fmt.Errorf("error getting quantity input: %v", err)
+		return fmt.Errorf("getting quantity input: %v", err)
 	}
 	quantity, err := strconv.ParseFloat(q, 64)
 	if err != nil {
-		return fmt.Errorf("error parsing quantity to int: %v", err)
+		return fmt.Errorf("parsing quantity to float: %v", err)
 	}
-	err = b.AddItem(id, quantity, cr)
-	if err != nil {
-		return err
-	}
-	return nil
+	return b.AddItem(id, quantity, cr)
 }
 
 func bomItemMenu(b *BOM, cr *ComponentRegistry) {
@@ -144,7 +166,7 @@ start:
 		}
 		input, err := getInput("option")
 		if err != nil {
-			fmt.Println(fmt.Errorf("error getting option: %v", err))
+			fmt.Println(fmt.Errorf("getting option: %v", err))
 			continue start
 		}
 		switch input {
@@ -155,7 +177,7 @@ start:
 		case AddItem:
 			err := addBomItem(b, cr)
 			if err != nil {
-				fmt.Printf("error adding BOM item: %v\n", err)
+				fmt.Printf("adding BOM item: %v\n", err)
 			}
 			continue start
 		case Exit:
@@ -168,11 +190,11 @@ start:
 func getBOMData() (*BOM, error) {
 	pID, err := getInput("product ID")
 	if err != nil {
-		return nil, fmt.Errorf("error getting product ID: %v", err)
+		return nil, fmt.Errorf("getting product ID: %v", err)
 	}
 	pName, err := getInput("product name")
 	if err != nil {
-		return nil, fmt.Errorf("error getting product name: %v", err)
+		return nil, fmt.Errorf("getting product name: %v", err)
 	}
 	return NewBOM(pID, pName)
 }
@@ -195,7 +217,7 @@ start:
 		}
 		input, err := getInput("option")
 		if err != nil {
-			fmt.Println(fmt.Errorf("error getting option: %v", err))
+			fmt.Println(fmt.Errorf("getting option: %v", err))
 			continue start
 		}
 		switch input {
@@ -206,12 +228,12 @@ start:
 			fmt.Println("===Creating BOM!===")
 			b, err := getBOMData()
 			if err != nil {
-				fmt.Printf("error creating BOM: %v", err)
+				fmt.Printf("creating BOM: %v\n", err)
 				continue start
 			}
 			err = br.CreateBOM(b)
 			if err != nil {
-				fmt.Printf("error creating BOM: %v", err)
+				fmt.Printf("creating BOM: %v\n", err)
 				continue start
 			}
 			fmt.Println("======Success======")
@@ -219,12 +241,12 @@ start:
 		case SelectBOM:
 			id, err := getInput("BOM id")
 			if err != nil {
-				fmt.Printf("error viewing BOM: %v", err)
+				fmt.Printf("viewing BOM: %v\n", err)
 				continue start
 			}
 			b, ok := br.GetBOM(id)
 			if !ok {
-				fmt.Printf("BOM does not exist!")
+				fmt.Printf("no BOM found with id: %s\n", id)
 				continue start
 			}
 			bomItemMenu(b, cr)
@@ -232,12 +254,12 @@ start:
 		case ViewBOM:
 			id, err := getInput("BOM id")
 			if err != nil {
-				fmt.Printf("error viewing BOM: %v", err)
+				fmt.Printf("viewing BOM: %v\n", err)
 				continue start
 			}
 			b, ok := br.GetBOM(id)
 			if !ok {
-				fmt.Printf("BOM not exist!")
+				fmt.Printf("no BOM found with id: %s\n", id)
 				continue start
 			}
 			fmt.Print(b.String())
@@ -245,7 +267,7 @@ start:
 		case DeleteBOM:
 			id, err := getInput("BOM id")
 			if err != nil {
-				fmt.Printf("error viewing BOM: %v", err)
+				fmt.Printf("viewing BOM: %v\n", err)
 				continue start
 			}
 			br.DeleteBOM(id)

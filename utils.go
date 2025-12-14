@@ -1,3 +1,5 @@
+// Package main provides utility functions for the production planner.
+// This file contains input/output helpers.
 package main
 
 import (

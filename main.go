@@ -1,12 +1,24 @@
+// Package main provides Bill of Materials (BOM) management functionality
+// for production planning and cost calculation.
 package main
 
 import (
 	"fmt"
 )
 
+func displayWelcome(compReg *ComponentRegistry, bomReg *BOMRegistry) {
+	fmt.Println("\n╔════════════════════════════════════════════╗")
+	fmt.Println("║  Production Planning Dashboard v1.0        ║")
+	fmt.Println("╚════════════════════════════════════════════╝")
+	fmt.Printf("\nSystem Status:\n")
+	fmt.Printf("  • Components: %d registered\n", len(compReg.Components))
+	fmt.Printf("  • BOMs: %d active\n\n", len(bomReg.BOMS))
+}
+
 func main() {
 	compReg := NewComponentRegistry()
 	bomReg := NewBOMRegistry()
+	displayWelcome(compReg, bomReg)
 run:
 	for {
 		menu := []string{"BOM Menu", "Components Menu", "Exit"}

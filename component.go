@@ -1,9 +1,27 @@
+// Provides Components,
 package main
 
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
+
+const (
+	minUnitCost     = 0.0
+	minLeadTimeDays = 0
+)
+
+func validateID(id string) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("id cannot be empty")
+	}
+	if strings.ContainsAny(id, " \t\n") {
+		return fmt.Errorf("id cannot contain whitespace")
+	}
+	return nil
+}
 
 type Component struct {
 	ID            string
@@ -22,14 +40,17 @@ func NewComponent(
 	unitCost float64,
 	leadTimeDays int,
 ) (*Component, error) {
-	if id == "" {
-		return nil, fmt.Errorf("id can't be empty")
+	if err := validateID(id); err != nil {
+		return nil, err
 	}
 	if name == "" {
 		return nil, fmt.Errorf("name can't be empty")
 	}
-	if unitCost < 0 {
-		return nil, fmt.Errorf("unit cost must be greater than 0.")
+	if unitCost < minUnitCost {
+		return nil, fmt.Errorf("unit cost must be at least %.2f", minUnitCost)
+	}
+	if leadTimeDays < minLeadTimeDays {
+		return nil, fmt.Errorf("lead time days must be at least %d", minLeadTimeDays)
 	}
 	return &Component{
 		ID:            id,
@@ -42,7 +63,23 @@ func NewComponent(
 }
 
 func (c *Component) String() string {
-	return fmt.Sprintf("===Component===\nID: %v\nName: %v\nDescription: %v\nUnit of Measure: %v\nUnit Cost: %v\nLead Time Days: %v\n================\n", c.ID, c.Name, c.Description, c.UnitOfMeasure, c.UnitCost, c.LeadTimeDays)
+	unitCostStr := fmt.Sprintf("$%.2f per %s", c.UnitCost, c.UnitOfMeasure)
+	leadTimeStr := fmt.Sprintf("%d days", c.LeadTimeDays)
+
+	return fmt.Sprintf(
+		"┌─ Component ──────────────────────────┐\n"+
+			"│ ID:          %-23s │\n"+
+			"│ Name:        %-23s │\n"+
+			"│ Description: %-23s │\n"+
+			"│ Unit Cost:   %-23s │\n"+
+			"│ Lead Time:   %-23s │\n"+
+			"└──────────────────────────────────────┘",
+		c.ID,
+		c.Name,
+		c.Description,
+		unitCostStr,
+		leadTimeStr,
+	)
 }
 
 type Components map[string]*Component
@@ -89,36 +126,42 @@ func (cr *ComponentRegistry) DeleteComponent(id string) {
 func getComponentData() (*Component, error) {
 	id, err := getInput("id")
 	if err != nil {
-		return nil, fmt.Errorf("error getting id: %v", err)
+		return nil, fmt.Errorf("getting id: %v", err)
 	}
+
 	name, err := getInput("name")
 	if err != nil {
-		return nil, fmt.Errorf("error getting name: %v", err)
+		return nil, fmt.Errorf("getting name: %v", err)
 	}
+
 	description, err := getInput("descreption")
 	if err != nil {
-		return nil, fmt.Errorf("error getting descreption: %v", err)
+		return nil, fmt.Errorf("getting descreption: %v", err)
 	}
+
 	unitOfMeasure, err := getInput("unit of measure")
 	if err != nil {
-		return nil, fmt.Errorf("error getting unitOfMeasure input: %v", err)
+		return nil, fmt.Errorf("getting unitOfMeasure input: %v", err)
 	}
+
 	uc, err := getInput("unit cost")
 	if err != nil {
-		return nil, fmt.Errorf("error getting unitCost input: %v", err)
+		return nil, fmt.Errorf("getting unit cost: %v", err)
 	}
 	unitCost, err := strconv.ParseFloat(uc, 64)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing unitCost to float64: %v", err)
+		return nil, fmt.Errorf("invalid unit cost '%s': must be a number", uc)
 	}
+
 	lTD, err := getInput("lead time days")
 	if err != nil {
-		return nil, fmt.Errorf("error getting leadTimeDays input: %v", err)
+		return nil, fmt.Errorf("getting lead time days: %v", err)
 	}
 	leadTimeDays, err := strconv.ParseInt(lTD, 10, 64)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing leadTimeDays to int: %v", err)
+		return nil, fmt.Errorf("invalid lead time days '%s': must be a number", uc)
 	}
+
 	return NewComponent(id, name, description, unitOfMeasure, unitCost, int(leadTimeDays))
 }
 
@@ -137,11 +180,13 @@ start:
 		for i, v := range menu {
 			fmt.Printf("%v. %v\n", i+1, v)
 		}
+
 		input, err := getInput("option")
 		if err != nil {
 			fmt.Println(fmt.Errorf("error getting option: %v", err))
 			continue start
 		}
+
 		switch input {
 		case AddComponent:
 			fmt.Println("===Adding Component===")
@@ -157,6 +202,7 @@ start:
 			}
 			fmt.Println("=======Success========")
 			continue start
+
 		case ViewComponent:
 			id, err := getInput("id")
 			if err != nil {
@@ -170,6 +216,7 @@ start:
 			}
 			fmt.Println(c.String())
 			continue start
+
 		case ListAllComponents:
 			components := cr.ListAll()
 			if len(components) == 0 {
@@ -180,17 +227,40 @@ start:
 				fmt.Println(v.String())
 			}
 			continue start
+
 		case DeleteComponent:
 			id, err := getInput("id")
 			if err != nil {
 				fmt.Printf("error deleting component: %v\n", err)
 				continue start
 			}
+
+			// Get component first
+			c, ok := cr.GetComponent(id)
+			if !ok {
+				fmt.Println("no component found with that id")
+				continue start
+			}
+
+			// Show what will be deleted
+			fmt.Println("\nComponent to delete:")
+			fmt.Println(c.String())
+
+			// Ask confirmation
+			confirm, err := getInput("type 'yes' to confirm deletion")
+			if err != nil || confirm != "yes" {
+				fmt.Println("deletion cancelled")
+				continue start
+			}
+
 			cr.DeleteComponent(id)
+			fmt.Println("component deleted successfully")
 			continue start
+
 		case Exit:
 			fmt.Println("Closing Component Menu")
 			break start
+
 		default:
 			fmt.Println("invalid options")
 			continue start
