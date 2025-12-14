@@ -5,9 +5,11 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   release:
-    name: Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -16,24 +18,34 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.25.0"
 
-      - name: Build binaries
+      - name: Build Windows AMD64
         run: |
-          # Windows
           GOOS=windows GOARCH=amd64 go build -o production-planner-windows-amd64.exe .
+
+      - name: Build Windows 386
+        run: |
           GOOS=windows GOARCH=386 go build -o production-planner-windows-386.exe .
 
-          # macOS
+      - name: Build macOS AMD64
+        run: |
           GOOS=darwin GOARCH=amd64 go build -o production-planner-darwin-amd64 .
+
+      - name: Build macOS ARM64
+        run: |
           GOOS=darwin GOARCH=arm64 go build -o production-planner-darwin-arm64 .
 
-          # Linux
+      - name: Build Linux AMD64
+        run: |
           GOOS=linux GOARCH=amd64 go build -o production-planner-linux-amd64 .
+
+      - name: Build Linux ARM64
+        run: |
           GOOS=linux GOARCH=arm64 go build -o production-planner-linux-arm64 .
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Release
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             production-planner-windows-amd64.exe
@@ -42,21 +54,3 @@ jobs:
             production-planner-darwin-arm64
             production-planner-linux-amd64
             production-planner-linux-arm64
-          body: |
-            ## Installation
-
-            Download the appropriate binary for your system:
-            - Windows 64-bit: `production-planner-windows-amd64.exe`
-            - Windows 32-bit: `production-planner-windows-386.exe`
-            - macOS Intel: `production-planner-darwin-amd64`
-            - macOS Apple Silicon: `production-planner-darwin-arm64`
-            - Linux 64-bit: `production-planner-linux-amd64`
-
-            ## Features
-            - Component management
-            - Single-level BOM creation
-            - Cost calculation
-
-            See CHANGELOG.md for full details.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
