@@ -11,8 +11,8 @@ func displayWelcome(compReg *ComponentRegistry, bomReg *BOMRegistry) {
 	fmt.Println("║  Production Planning Dashboard v1.0        ║")
 	fmt.Println("╚════════════════════════════════════════════╝")
 	fmt.Printf("\nSystem Status:\n")
-	fmt.Printf("  • Components: %d registered\n", len(compReg.Components))
-	fmt.Printf("  • BOMs: %d active\n\n", len(bomReg.BOMS))
+	fmt.Printf("  • Components: %d registered\n", compReg.Len())
+	fmt.Printf("  • BOMs: %d active\n\n", bomReg.Len())
 }
 
 func main() {

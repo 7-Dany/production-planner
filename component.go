@@ -84,43 +84,31 @@ func (c *Component) String() string {
 
 type Components map[string]*Component
 
+// ComponentRegistry wraps the generic Registry for Components
 type ComponentRegistry struct {
-	Components Components
+	*Registry[*Component]
 }
 
+// NewComponentRegistry creates a new ComponentRegistry
 func NewComponentRegistry() *ComponentRegistry {
 	return &ComponentRegistry{
-		Components: make(map[string]*Component),
+		Registry: NewRegistry[*Component](),
 	}
 }
 
+// AddComponent adds a component to the registry
 func (cr *ComponentRegistry) AddComponent(c *Component) error {
-	_, ok := cr.Components[c.ID]
-	if ok {
-		return fmt.Errorf("component %v already exists", c.ID)
-	}
-	cr.Components[c.ID] = c
-	return nil
+	return cr.Add(c.ID, c)
 }
 
+// GetComponent retrieves a component by ID
 func (cr *ComponentRegistry) GetComponent(id string) (*Component, bool) {
-	c, ok := cr.Components[id]
-	if !ok {
-		return nil, false
-	}
-	return c, true
+	return cr.Get(id)
 }
 
-func (cr *ComponentRegistry) ListAll() []*Component {
-	c := make([]*Component, 0, len(cr.Components))
-	for _, v := range cr.Components {
-		c = append(c, v)
-	}
-	return c
-}
-
+// DeleteComponent removes a component by ID
 func (cr *ComponentRegistry) DeleteComponent(id string) {
-	delete(cr.Components, id)
+	cr.Delete(id)
 }
 
 func getComponentData() (*Component, error) {

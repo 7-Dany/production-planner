@@ -95,44 +95,43 @@ func (bom *BOM) String() string {
 	return b.String()
 }
 
+// BOMRegistry wraps the generic Registry for BOMs
 type BOMRegistry struct {
-	BOMS map[string]*BOM
+	*Registry[*BOM]
 }
 
+// NewBOMRegistry creates a new BOMRegistry
 func NewBOMRegistry() *BOMRegistry {
-	return &BOMRegistry{make(map[string]*BOM)}
+	return &BOMRegistry{
+		Registry: NewRegistry[*BOM](),
+	}
 }
 
+// CreateBOM adds a BOM to the registry
+func (br *BOMRegistry) CreateBOM(b *BOM) error {
+	return br.Add(b.ProductID, b)
+}
+
+// GetBOM retrieves a BOM by ID
+func (br *BOMRegistry) GetBOM(id string) (*BOM, bool) {
+	return br.Get(id)
+}
+
+// DeleteBOM removes a BOM by ID
+func (br *BOMRegistry) DeleteBOM(id string) {
+	br.Delete(id)
+}
+
+// ListAll displays all BOMs with formatting
 func (br *BOMRegistry) ListAll() {
-	if len(br.BOMS) == 0 {
+	if br.Len() == 0 {
 		fmt.Println("BOM Registry is Empty")
 		return
 	}
 	fmt.Println("===All BOM===")
-	for _, v := range br.BOMS {
+	for _, v := range br.Registry.ListAll() {
 		fmt.Print(v.String())
 	}
-}
-
-func (br *BOMRegistry) CreateBOM(b *BOM) error {
-	_, ok := br.BOMS[b.ProductID]
-	if ok {
-		return fmt.Errorf("product id %q already exists", b.ProductID)
-	}
-	br.BOMS[b.ProductID] = b
-	return nil
-}
-
-func (br *BOMRegistry) GetBOM(id string) (*BOM, bool) {
-	b, ok := br.BOMS[id]
-	if !ok {
-		return nil, false
-	}
-	return b, true
-}
-
-func (br *BOMRegistry) DeleteBOM(id string) {
-	delete(br.BOMS, id)
 }
 
 func addBomItem(b *BOM, cr *ComponentRegistry) error {
